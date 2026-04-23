@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(gunzip -c \"C:\\\\Users\\\\henri\\\\.claude\\\\projects\\\\C--Users-henri-OneDrive-Documents-Primacare-dental-app-App-test-1-docscan\\\\30e68205-ce7e-4d43-8457-3e95652c07fe\\\\tool-results\\\\webfetch-1776718753567-i8g1nw.bin\")",
+      "Bash(tar -x -O docscan/project/DocScan.html)",
+      "Bash(tar -x -O docscan/project/components/shell.jsx)",
+      "Bash(tar -x -O docscan/project/components/dashboard.jsx)",
+      "Bash(tar -x -O docscan/project/components/documents.jsx)",
+      "Bash(tar -x -O docscan/project/components/review.jsx)",
+      "Bash(tar -x -O docscan/project/components/upload.jsx)",
+      "Bash(tar -x -O docscan/project/components/settings.jsx)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(node -e \"const data = require\\('C:/Users/henri/OneDrive/Documents/Primacare dental app/App test 1/docscan/node_modules/next/dist/compiled/@next/font/dist/google/font-data.json'\\); const fonts = Object.keys\\(data\\); console.log\\(fonts.filter\\(f => f.toLowerCase\\(\\).includes\\('jetbrains'\\) || f.toLowerCase\\(\\).includes\\('mono'\\) || f.toLowerCase\\(\\).includes\\('inter'\\)\\)\\)\")",
+      "Bash(npx next *)"
+    ]
+  }
+}

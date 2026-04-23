@@ -1,0 +1,33 @@
+{
+  "name": "DocScan",
+  "short_name": "DocScan",
+  "description": "AI bookkeeping — capture and validate expense documents",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f6ef7",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/api/icon/192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/api/icon/512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Capture document",
+      "short_name": "Capture",
+      "description": "Upload a new document",
+      "url": "/documents/new",
+      "icons": [{ "src": "/api/icon/192", "sizes": "192x192" }]
+    }
+  ]
+}
