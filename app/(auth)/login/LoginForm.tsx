@@ -42,7 +42,7 @@ export default function LoginForm() {
     const supabase = getSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}${next}` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${next}` },
     });
     setLoading(false);
     if (error) setMessage(`Google login failed: ${error.message}`);
@@ -55,7 +55,7 @@ export default function LoginForm() {
     const supabase = getSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}${next}` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${next}` },
     });
     setLoading(false);
     if (error) { setMessage(`Email login failed: ${error.message}`); return; }
