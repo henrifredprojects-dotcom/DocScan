@@ -16,6 +16,13 @@ const extractionSchema = z.object({
   period: z.string().nullable().optional(),
   suggested_category: z.string().nullable().optional(),
   confidence: z.coerce.number().min(0).max(1).default(0),
+  tin_number: z.string().nullable().optional(),
+  nature_of_expense: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  type_of_expense: z.string().nullable().optional(),
+  or_number: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  receipt_validity: z.string().nullable().optional(),
 });
 
 export function normalizeExtraction(input: unknown): NormalizedExtraction {
@@ -43,5 +50,12 @@ export function normalizeExtraction(input: unknown): NormalizedExtraction {
     suggested_category: parsed.suggested_category ?? null,
     confidence: Number(parsed.confidence.toFixed(2)),
     required_fields_complete,
+    tin_number: parsed.tin_number ?? null,
+    nature_of_expense: parsed.nature_of_expense ?? "Expense",
+    category: parsed.category ?? null,
+    type_of_expense: parsed.type_of_expense ?? null,
+    or_number: parsed.or_number ?? null,
+    description: parsed.description ?? null,
+    receipt_validity: parsed.receipt_validity ?? null,
   };
 }

@@ -77,9 +77,17 @@ export interface NormalizedExtraction {
   payment_method: string | null;
   document_type: string;
   reference_number: string | null;
-  due_date: string | null;        // Payment due date — invoices
-  period: string | null;          // Billing period — utilities, rent, subscriptions
+  due_date: string | null;
+  period: string | null;
   suggested_category: string | null;
   confidence: number;
   required_fields_complete: boolean;
+  // Disbursement book fields
+  tin_number: string | null;
+  nature_of_expense: string | null;
+  category: string | null;
+  type_of_expense: string | null;
+  or_number: string | null;
+  description: string | null;
+  receipt_validity: string | null;
 }
