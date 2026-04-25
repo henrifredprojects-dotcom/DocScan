@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import { createCategory } from "@/lib/data/categories";
-import { createWorkspace, getCurrentUser } from "@/lib/data/workspaces";
-import { setActiveWorkspaceCookie } from "@/lib/workspace";
+import { useActionState } from "react";
+import { createWorkspaceAction } from "./actions";
 
 const DEFAULT_CATEGORIES = [
   "Transport", "Meals & Entertainment", "Medical supplies",
@@ -10,35 +9,9 @@ const DEFAULT_CATEGORIES = [
   "Bank fees", "Other",
 ];
 
-async function createWorkspaceAction(formData: FormData) {
-  "use server";
-
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) return;
-
-  const workspace = await createWorkspace({
-    userId: user.id,
-    name,
-    color: String(formData.get("color") ?? "#1A56DB"),
-    currency: String(formData.get("currency") ?? "PHP"),
-    sheetsId: String(formData.get("sheets_id") ?? "").trim() || undefined,
-    sheetsTab: String(formData.get("sheets_tab") ?? "").trim() || undefined,
-  });
-
-  await Promise.all(
-    DEFAULT_CATEGORIES.map((catName) =>
-      createCategory({ workspaceId: workspace.id, name: catName, isDefault: true }),
-    ),
-  );
-
-  await setActiveWorkspaceCookie(workspace.id);
-  redirect("/dashboard");
-}
-
 export default function NewWorkspacePage() {
+  const [state, formAction, pending] = useActionState(createWorkspaceAction, { error: null });
+
   return (
     <div>
       <div className="screen-h">
@@ -49,8 +22,7 @@ export default function NewWorkspacePage() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
-        {/* Form */}
-        <form action={createWorkspaceAction}>
+        <form action={formAction}>
           <div className="card" style={{ padding: 20 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
@@ -94,7 +66,7 @@ export default function NewWorkspacePage() {
 
               <div className="field">
                 <label style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-600)" }}>
-                  Google Sheet ID
+                  Google Sheet ID <span style={{ fontWeight: 400, color: "var(--ink-400)" }}>(optional)</span>
                 </label>
                 <input
                   name="sheets_id"
@@ -106,19 +78,34 @@ export default function NewWorkspacePage() {
 
               <div className="field">
                 <label style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-600)" }}>
-                  Tab name
+                  Tab name <span style={{ fontWeight: 400, color: "var(--ink-400)" }}>(optional)</span>
                 </label>
                 <input name="sheets_tab" placeholder="Sheet1" className="ds-input mono" />
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }}>
-                Create workspace
+              {state.error && (
+                <p style={{
+                  fontSize: 13, color: "var(--err)",
+                  padding: "10px 14px", borderRadius: 8,
+                  background: "oklch(0.97 0.03 25)",
+                  border: "1px solid oklch(0.85 0.08 25)",
+                }}>
+                  {state.error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={pending}
+                className="btn btn-primary"
+                style={{ width: "100%", justifyContent: "center" }}
+              >
+                {pending ? "Creating…" : "Create workspace"}
               </button>
             </div>
           </div>
         </form>
 
-        {/* Info panel */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="card" style={{ padding: 16 }}>
             <div className="card-title" style={{ marginBottom: 8 }}>Default categories</div>
@@ -148,7 +135,6 @@ export default function NewWorkspacePage() {
               <code className="mono" style={{ background: "var(--blue-100)", padding: "1px 4px", borderRadius: 4, color: "var(--blue-ink)" }}>
                 /edit
               </code>.
-              Share the sheet with the service account email visible in Settings → Google Sheets.
             </div>
           </div>
         </div>
