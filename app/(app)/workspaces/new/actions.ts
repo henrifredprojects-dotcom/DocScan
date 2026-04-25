@@ -1,10 +1,10 @@
 "use server";
 
+import { createServerClient } from "@supabase/ssr";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
-import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { createCategory } from "@/lib/data/categories";
+import { requirePublicEnv } from "@/lib/env";
 import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/workspace";
 
 const DEFAULT_CATEGORIES = [
@@ -13,18 +13,33 @@ const DEFAULT_CATEGORIES = [
   "Bank fees", "Other",
 ];
 
+function createClient() {
+  const env = requirePublicEnv();
+  // Create a fresh (non-cached) client so the session cookies are always current
+  return cookies().then((cookieStore) =>
+    createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: (toSet) => toSet.forEach(({ name, value, options }) =>
+          cookieStore.set(name, value, options)
+        ),
+      },
+    })
+  );
+}
+
 export async function createWorkspaceAction(
   _prevState: { error: string | null },
   formData: FormData,
 ): Promise<{ error: string | null }> {
-  const supabase = await getSupabaseServerClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Workspace name is required." };
 
-  const { data: workspace, error } = await supabase
+  const { data: workspace, error: wsError } = await supabase
     .from("workspaces")
     .insert({
       owner_id: user.id,
@@ -37,13 +52,24 @@ export async function createWorkspaceAction(
     .select("*")
     .single();
 
-  if (error) return { error: error.message };
+  if (wsError) return { error: wsError.message };
 
-  await Promise.all(
+  // Insert default categories
+  const catResults = await Promise.allSettled(
     DEFAULT_CATEGORIES.map((catName) =>
-      createCategory({ workspaceId: workspace.id, name: catName, isDefault: true }),
+      supabase.from("categories").insert({
+        workspace_id: workspace.id,
+        name: catName,
+        is_default: true,
+        account_code: null,
+      })
     ),
   );
+
+  const catError = catResults.find((r) => r.status === "rejected");
+  if (catError && catError.status === "rejected") {
+    console.error("Category insert error:", catError.reason);
+  }
 
   const cookieStore = await cookies();
   cookieStore.set(ACTIVE_WORKSPACE_COOKIE, workspace.id, {
