@@ -52,9 +52,12 @@ export async function POST(
     // Step 3: if a sheet is configured, try to read it
     if (workspace.sheets_id && workspace.sheets_tab) {
       const sheets = google.sheets({ version: "v4", auth });
+      // Strip full URL if stored (e.g. https://docs.google.com/spreadsheets/d/ID/edit)
+      const rawId = workspace.sheets_id as string;
+      const spreadsheetId = rawId.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] ?? rawId;
       try {
         await sheets.spreadsheets.values.get({
-          spreadsheetId: workspace.sheets_id as string,
+          spreadsheetId,
           range: `${workspace.sheets_tab}!A1`,
         });
         return NextResponse.json({ ok: true, message: `Connection successful. Sheet "${workspace.sheets_tab}" is accessible.` });

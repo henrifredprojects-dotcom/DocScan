@@ -197,6 +197,10 @@ export async function exportToWorkspaceSheet(params: {
     throw new Error("Workspace has no sheets_id/sheets_tab configured.");
   }
 
+  // Strip full URL if stored
+  const rawId = workspace.sheets_id;
+  const sheetsId = rawId.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] ?? rawId;
+
   const template = getTemplate(workspace.sheets_template);
   const fileSignedUrl = await getSignedDocumentUrl(document.file_url, 31536000).catch(() => document.file_url);
 
@@ -213,21 +217,21 @@ export async function exportToWorkspaceSheet(params: {
 
   // Check if sheet tab is empty
   const { data: existing } = await sheets.spreadsheets.values.get({
-    spreadsheetId: workspace.sheets_id,
+    spreadsheetId: sheetsId,
     range: `${workspace.sheets_tab}!A1`,
   });
   const isEmpty = !existing.values || existing.values.length === 0;
 
   if (isEmpty) {
     await sheets.spreadsheets.values.update({
-      spreadsheetId: workspace.sheets_id,
+      spreadsheetId: sheetsId,
       range: `${workspace.sheets_tab}!A1`,
       valueInputOption: "RAW",
       requestBody: { values: [headerRow] },
     });
 
     const meta = await sheets.spreadsheets.get({
-      spreadsheetId: workspace.sheets_id,
+      spreadsheetId: sheetsId,
       fields: "sheets(properties(sheetId,title))",
     });
     const sheetId = meta.data.sheets?.find(
@@ -237,7 +241,7 @@ export async function exportToWorkspaceSheet(params: {
     if (sheetId !== undefined && sheetId !== null) {
       await applySheetFormatting(
         sheets,
-        workspace.sheets_id,
+        sheetsId,
         sheetId,
         template.columns.length,
         columnWidths,
@@ -247,7 +251,7 @@ export async function exportToWorkspaceSheet(params: {
   }
 
   await sheets.spreadsheets.values.append({
-    spreadsheetId: workspace.sheets_id,
+    spreadsheetId: sheetsId,
     range: `${workspace.sheets_tab}!A1`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [dataRow] },

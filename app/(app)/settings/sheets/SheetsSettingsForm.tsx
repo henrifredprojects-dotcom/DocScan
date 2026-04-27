@@ -17,9 +17,14 @@ type RowState = {
   error: string | null;
 };
 
+function parseSheetId(raw: string): string {
+  const match = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : raw.trim();
+}
+
 function initRow(w: Workspace): RowState {
   return {
-    sheetsId: w.sheets_id ?? "",
+    sheetsId: parseSheetId(w.sheets_id ?? ""),
     sheetsTab: w.sheets_tab ?? "",
     sheetsTemplate: w.sheets_template ?? DEFAULT_TEMPLATE_ID,
     saving: false,
@@ -48,12 +53,6 @@ export function SheetsSettingsForm({ workspaces }: { workspaces: Workspace[] }) 
 
   function update(id: string, patch: Partial<RowState>) {
     setRows((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
-  }
-
-  // Extract sheet ID from a full Google Sheets URL if the user pastes one
-  function parseSheetId(raw: string): string {
-    const match = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-    return match ? match[1] : raw.trim();
   }
 
   async function testConnection(workspace: Workspace) {
