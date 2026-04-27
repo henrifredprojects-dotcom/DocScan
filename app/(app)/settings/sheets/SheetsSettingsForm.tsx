@@ -12,6 +12,8 @@ type RowState = {
   saving: boolean;
   saved: boolean;
   creating: boolean;
+  testing: boolean;
+  testResult: { ok: boolean; message: string } | null;
   error: string | null;
 };
 
@@ -23,6 +25,8 @@ function initRow(w: Workspace): RowState {
     saving: false,
     saved: false,
     creating: false,
+    testing: false,
+    testResult: null,
     error: null,
   };
 }
@@ -50,6 +54,18 @@ export function SheetsSettingsForm({ workspaces }: { workspaces: Workspace[] }) 
   function parseSheetId(raw: string): string {
     const match = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
     return match ? match[1] : raw.trim();
+  }
+
+  async function testConnection(workspace: Workspace) {
+    update(workspace.id, { testing: true, testResult: null, error: null });
+    const response = await fetch(`/api/workspaces/${workspace.id}/test-sheet`, { method: "POST" });
+    const payload = (await response.json()) as { ok?: boolean; message?: string; error?: string };
+    update(workspace.id, {
+      testing: false,
+      testResult: payload.ok
+        ? { ok: true, message: payload.message ?? "Connection OK" }
+        : { ok: false, message: payload.error ?? "Unknown error" },
+    });
   }
 
   async function createSheet(workspace: Workspace) {
@@ -238,14 +254,21 @@ export function SheetsSettingsForm({ workspaces }: { workspaces: Workspace[] }) 
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => save(workspace)}
-                disabled={row.saving || row.creating}
+                disabled={row.saving || row.creating || row.testing}
               >
                 {row.saving ? "Saving…" : "Save"}
               </button>
               <button
                 className="btn btn-ghost btn-sm"
+                onClick={() => testConnection(workspace)}
+                disabled={row.testing || row.saving || row.creating}
+              >
+                {row.testing ? "Testing…" : "Test connection"}
+              </button>
+              <button
+                className="btn btn-ghost btn-sm"
                 onClick={() => createSheet(workspace)}
-                disabled={row.creating || row.saving}
+                disabled={row.creating || row.saving || row.testing}
                 style={{ display: "flex", alignItems: "center", gap: 6 }}
               >
                 {row.creating ? "Creating…" : (
@@ -266,6 +289,20 @@ export function SheetsSettingsForm({ workspaces }: { workspaces: Workspace[] }) 
                 <span style={{ fontSize: 12.5, color: "var(--err)", fontWeight: 500 }}>{row.error}</span>
               )}
             </div>
+            {row.testResult && (
+              <div style={{
+                marginTop: 10,
+                padding: "10px 14px",
+                borderRadius: 8,
+                fontSize: 12.5,
+                lineHeight: 1.5,
+                background: row.testResult.ok ? "oklch(0.96 0.05 160)" : "oklch(0.97 0.03 25)",
+                color: row.testResult.ok ? "oklch(0.4 0.14 160)" : "var(--err)",
+                border: `1px solid ${row.testResult.ok ? "oklch(0.85 0.06 160)" : "oklch(0.85 0.08 25)"}`,
+              }}>
+                {row.testResult.ok ? "✓ " : "✗ "}{row.testResult.message}
+              </div>
+            )}
           </div>
         );
       })}
