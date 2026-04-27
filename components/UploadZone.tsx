@@ -78,6 +78,7 @@ export function UploadZone({ workspaceId }: { workspaceId: string }) {
   const [stepIdx, setStepIdx] = useState(0);
   const [processedIds, setProcessedIds] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [fileErrors, setFileErrors] = useState<Record<number, string>>({});
 
   function buildPreview(file: File): string | null {
     if (file.type.startsWith("image/")) return URL.createObjectURL(file);
@@ -108,6 +109,7 @@ export function UploadZone({ workspaceId }: { workspaceId: string }) {
     setCurrentIdx(0);
     setStepIdx(0);
     setError("");
+    setFileErrors({});
     setStage("idle");
   }
 
@@ -140,9 +142,8 @@ export function UploadZone({ workspaceId }: { workspaceId: string }) {
 
       if (!res.ok) {
         const payload = (await res.json()) as { error?: string };
-        setError(`File "${staged[i].file.name}": ${payload.error ?? "Upload failed"}`);
-        setStage("error");
-        return;
+        setFileErrors((prev) => ({ ...prev, [i]: payload.error ?? "Upload failed" }));
+        continue; // skip this file, process the rest
       }
 
       const payload = (await res.json()) as { documentId: string };
@@ -150,9 +151,14 @@ export function UploadZone({ workspaceId }: { workspaceId: string }) {
     }
 
     setProcessedIds(ids);
-
-    // Revoke all previews
     staged.forEach((s) => { if (s.preview) URL.revokeObjectURL(s.preview); });
+
+    const errors = Object.values(fileErrors);
+    if (ids.length === 0 && errors.length > 0) {
+      setError(errors.join("\n"));
+      setStage("error");
+      return;
+    }
 
     if (ids.length === 1) {
       router.push(`/documents/${ids[0]}/review`);

@@ -89,16 +89,40 @@ ${exampleLines.join("\n\n")}`;
 
 const MAX_RETRIES = 3;
 
+async function fetchAsBase64(url: string): Promise<{ data: string; mediaType: string }> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch file: ${res.status}`);
+  const buffer = await res.arrayBuffer();
+  const data = Buffer.from(buffer).toString("base64");
+  const mediaType = res.headers.get("content-type") ?? "application/pdf";
+  return { data, mediaType };
+}
+
 async function callOpenAI(
   client: OpenAI,
-  imageUrl: string,
+  fileUrl: string,
   prompt: string,
+  isPdf: boolean,
 ) {
+  // For PDFs: fetch bytes and send as base64 input_file (OpenAI Vision doesn't accept PDF URLs)
+  // For images: send URL directly
+  type ContentItem =
+    | { type: "input_image"; image_url: string; detail: "high" }
+    | { type: "input_file"; filename: string; file_data: string };
+
+  let fileContent: ContentItem;
+  if (isPdf) {
+    const { data } = await fetchAsBase64(fileUrl);
+    fileContent = { type: "input_file", filename: "document.pdf", file_data: `data:application/pdf;base64,${data}` };
+  } else {
+    fileContent = { type: "input_image", image_url: fileUrl, detail: "high" };
+  }
+
   let lastError: unknown;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       return await client.responses.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         input: [
           {
             role: "system",
@@ -108,7 +132,7 @@ async function callOpenAI(
             role: "user",
             content: [
               { type: "input_text", text: prompt },
-              { type: "input_image", image_url: imageUrl, detail: "high" },
+              fileContent,
             ],
           },
         ],
@@ -125,13 +149,15 @@ async function callOpenAI(
 }
 
 export async function extractDocumentData(
-  imageUrl: string,
+  fileUrl: string,
   examples: Array<{ extracted: Record<string, unknown>; validated: Record<string, unknown> }> = [],
+  contentType?: string,
 ): Promise<NormalizedExtraction> {
   const env = requireServerEnv();
   const client = new OpenAI({ apiKey: env.openAiApiKey });
 
-  const response = await callOpenAI(client, imageUrl, buildPrompt(examples));
+  const isPdf = contentType === "application/pdf" || fileUrl.toLowerCase().includes(".pdf");
+  const response = await callOpenAI(client, fileUrl, buildPrompt(examples), isPdf);
   if (response.error) throw new Error(`OpenAI error: ${response.error.message}`);
   if (!response.output_text) throw new Error("OpenAI returned an empty response");
   const parsed = JSON.parse(response.output_text) as unknown;

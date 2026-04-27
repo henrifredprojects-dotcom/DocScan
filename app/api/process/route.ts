@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     const signedUrl = await getSignedDocumentUrl(objectPath, 3600);
 
     const examples = await getFewShotExamples(workspaceId).catch(() => []);
-    const extracted = await extractDocumentData(signedUrl, examples);
+    const extracted = await extractDocumentData(signedUrl, examples, prepared.contentType);
 
     // Apply vendor rules: if a rule matches the extracted vendor, override the suggested category
     type VRRow = { vendor_match: string; categories: { name: string } | null };
