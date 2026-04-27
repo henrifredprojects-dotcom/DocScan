@@ -31,7 +31,7 @@ function getDriveAuthClient() {
     key: env.googleServiceAccountPrivateKey.replace(/\\n/g, "\n"),
     scopes: [
       "https://www.googleapis.com/auth/spreadsheets",
-      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/drive",
     ],
   });
   return _driveAuthClient;
@@ -50,9 +50,8 @@ export async function createAndShareSheet(
   userEmail: string,
   templateId: string | null,
 ): Promise<{ sheetId: string; tabName: string; sharedOk: boolean }> {
-  // Use Sheets-only auth for creation (Drive auth for sharing attempt)
-  const sheetsAuth = getAuthClient();
-  const sheets = google.sheets({ version: "v4", auth: sheetsAuth });
+  const driveAuth = getDriveAuthClient();
+  const sheets = google.sheets({ version: "v4", auth: driveAuth });
 
   const tabName = "Expenses";
   const template = getTemplate(templateId);
@@ -86,12 +85,8 @@ export async function createAndShareSheet(
     template.columns.map((c, i) => (c.numeric ? i : -1)).filter((i) => i >= 0),
   );
 
-  // Try to share with the user — requires Drive API to be enabled.
-  // If it fails (Drive API not enabled), continue anyway: export still works,
-  // the user can access the sheet via the link saved in workspace settings.
   let sharedOk = false;
   try {
-    const driveAuth = getDriveAuthClient();
     const drive = google.drive({ version: "v3", auth: driveAuth });
     await drive.permissions.create({
       fileId: spreadsheetId,

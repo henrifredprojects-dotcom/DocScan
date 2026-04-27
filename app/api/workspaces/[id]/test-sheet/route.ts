@@ -55,18 +55,29 @@ export async function POST(
       // Strip full URL if stored (e.g. https://docs.google.com/spreadsheets/d/ID/edit)
       const rawId = workspace.sheets_id as string;
       const spreadsheetId = rawId.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] ?? rawId;
+      // First, get the list of actual tab names in the sheet
+      let actualTabs: string[] = [];
       try {
-        await sheets.spreadsheets.values.get({
+        const meta = await sheets.spreadsheets.get({
           spreadsheetId,
-          range: `${workspace.sheets_tab}!A1`,
+          fields: "sheets(properties(title))",
         });
-        return NextResponse.json({ ok: true, message: `Connection successful. Sheet "${workspace.sheets_tab}" is accessible.` });
-      } catch (sheetErr) {
-        const msg = sheetErr instanceof Error ? sheetErr.message : String(sheetErr);
+        actualTabs = (meta.data.sheets ?? []).map((s) => s.properties?.title ?? "");
+      } catch (metaErr) {
+        const msg = metaErr instanceof Error ? metaErr.message : String(metaErr);
         return NextResponse.json({
-          error: `Credentials OK but sheet access failed: ${msg}. Make sure the sheet is shared with ${env.googleServiceAccountEmail} as Editor.`,
+          error: `Cannot access sheet. Make sure it is shared with ${env.googleServiceAccountEmail} as Editor. (${msg})`,
         }, { status: 500 });
       }
+
+      const tabExists = actualTabs.includes(workspace.sheets_tab as string);
+      if (!tabExists) {
+        return NextResponse.json({
+          error: `Sheet is accessible but tab "${workspace.sheets_tab}" not found. Available tabs: ${actualTabs.map((t) => `"${t}"`).join(", ")}`,
+        }, { status: 500 });
+      }
+
+      return NextResponse.json({ ok: true, message: `Connection successful. Tab "${workspace.sheets_tab}" found.` });
     }
 
     return NextResponse.json({ ok: true, message: "Google credentials are valid. No sheet configured yet — use 'Create new Sheet'." });
