@@ -38,7 +38,13 @@ export async function POST(
 
     return NextResponse.json({ ok: true, workspace: updated });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
+    // Log full error for debugging
+    console.error("[create-sheet] error:", error);
+    const message = error instanceof Error
+      ? error.message
+      : (typeof error === "object" && error !== null && "errors" in error)
+        ? JSON.stringify((error as { errors: unknown }).errors)
+        : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

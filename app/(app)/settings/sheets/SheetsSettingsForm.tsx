@@ -46,6 +46,12 @@ export function SheetsSettingsForm({ workspaces }: { workspaces: Workspace[] }) 
     setRows((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
   }
 
+  // Extract sheet ID from a full Google Sheets URL if the user pastes one
+  function parseSheetId(raw: string): string {
+    const match = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : raw.trim();
+  }
+
   async function createSheet(workspace: Workspace) {
     update(workspace.id, { creating: true, error: null });
     const response = await fetch(`/api/workspaces/${workspace.id}/create-sheet`, { method: "POST" });
@@ -127,7 +133,7 @@ export function SheetsSettingsForm({ workspaces }: { workspaces: Workspace[] }) 
                   type="text"
                   placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
                   value={row.sheetsId}
-                  onChange={(e) => update(workspace.id, { sheetsId: e.target.value })}
+                  onChange={(e) => update(workspace.id, { sheetsId: parseSheetId(e.target.value) })}
                   className="ds-input mono"
                   style={{ fontSize: 12 }}
                 />

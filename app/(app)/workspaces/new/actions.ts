@@ -48,7 +48,7 @@ export async function createWorkspaceAction(
       name,
       color: String(formData.get("color") ?? "#1A56DB"),
       currency: String(formData.get("currency") ?? "PHP"),
-      sheets_id: String(formData.get("sheets_id") ?? "").trim() || null,
+      sheets_id: (() => { const raw = String(formData.get("sheets_id") ?? "").trim(); const m = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/); return (m ? m[1] : raw) || null; })(),
       sheets_tab: String(formData.get("sheets_tab") ?? "").trim() || null,
     })
     .select("*")
