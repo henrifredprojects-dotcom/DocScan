@@ -122,6 +122,7 @@ export function UploadZone({ workspaceId }: { workspaceId: string }) {
     setError("");
 
     const ids: string[] = [];
+    const localErrors: Record<number, string> = {};
 
     for (let i = 0; i < staged.length; i++) {
       setCurrentIdx(i);
@@ -142,7 +143,9 @@ export function UploadZone({ workspaceId }: { workspaceId: string }) {
 
       if (!res.ok) {
         const payload = (await res.json()) as { error?: string };
-        setFileErrors((prev) => ({ ...prev, [i]: payload.error ?? "Upload failed" }));
+        const msg = payload.error ?? "Upload failed";
+        localErrors[i] = msg;
+        setFileErrors((prev) => ({ ...prev, [i]: msg }));
         continue; // skip this file, process the rest
       }
 
@@ -153,9 +156,8 @@ export function UploadZone({ workspaceId }: { workspaceId: string }) {
     setProcessedIds(ids);
     staged.forEach((s) => { if (s.preview) URL.revokeObjectURL(s.preview); });
 
-    const errors = Object.values(fileErrors);
-    if (ids.length === 0 && errors.length > 0) {
-      setError(errors.join("\n"));
+    if (ids.length === 0 && Object.keys(localErrors).length > 0) {
+      setError(Object.values(localErrors).join("\n"));
       setStage("error");
       return;
     }
