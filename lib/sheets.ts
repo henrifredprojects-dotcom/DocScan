@@ -178,7 +178,6 @@ async function applySheetFormatting(
             bandedRange: {
               range: { sheetId, startRowIndex: 1, endRowIndex: 10000, startColumnIndex: 0, endColumnIndex: numCols },
               rowProperties: {
-                headerColor: BLUE,
                 firstBandColor: WHITE,
                 secondBandColor: LIGHT_BLUE,
               },
