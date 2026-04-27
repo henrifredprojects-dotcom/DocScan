@@ -181,6 +181,11 @@ export function WorkspaceSidebar({
     router.refresh();
   }
 
+  function handleSwitchWorkspace(id: string) {
+    switchWorkspace(id);
+    router.push("/dashboard");
+  }
+
   const mainNav = [
     { href: "/dashboard",     label: "Dashboard",  icon: <HomeIcon />,      match: (p: string) => p === "/dashboard" },
     { href: "/documents",     label: "Documents",  icon: <DocsIcon />,      match: (p: string) => p.startsWith("/documents") && p !== "/documents/new" },
@@ -254,7 +259,7 @@ export function WorkspaceSidebar({
             <button
               key={ws.id}
               type="button"
-              onClick={() => { switchWorkspace(ws.id); router.refresh(); }}
+              onClick={() => handleSwitchWorkspace(ws.id)}
               style={{
                 display: "flex",
                 alignItems: "center",
