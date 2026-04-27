@@ -26,6 +26,7 @@ export async function PATCH(
       sheets_id?: string | null;
       sheets_tab?: string | null;
       sheets_template?: string | null;
+      confidence_threshold?: number | null;
     };
 
     const updated = await updateWorkspace(workspaceId, user.id, {
@@ -36,6 +37,7 @@ export async function PATCH(
       sheetsId: body.sheets_id,
       sheetsTab: body.sheets_tab,
       sheetsTemplate: body.sheets_template,
+      confidenceThreshold: body.confidence_threshold,
     });
 
     return NextResponse.json({ ok: true, workspace: updated });

@@ -313,6 +313,50 @@ export async function getReportData(
   return (data ?? []) as Pick<DocumentRow, "id" | "extracted_data" | "validated_data" | "created_at" | "status">[];
 }
 
+export async function getKanbanData(workspaceId: string, threshold: number) {
+  const supabase = await getSupabaseServerClient();
+
+  // Fetch all non-rejected docs — we classify them client-side
+  const [docsResult, commentsResult] = await Promise.all([
+    supabase
+      .from("documents")
+      .select("id, extracted_data, validated_data, status, created_at, file_url")
+      .eq("workspace_id", workspaceId)
+      .neq("status", "rejected")
+      .order("created_at", { ascending: false })
+      .limit(200),
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
+      .from("document_comments")
+      .select("document_id")
+      .eq("workspace_id", workspaceId),
+  ]);
+
+  const docs = (docsResult.data ?? []) as Array<{
+    id: string;
+    extracted_data: Record<string, unknown> | null;
+    validated_data: Record<string, unknown> | null;
+    status: string;
+    created_at: string;
+    file_url: string;
+  }>;
+
+  const commentDocIds = new Set(
+    ((commentsResult as { data?: Array<{ document_id: string }> }).data ?? []).map((c) => c.document_id),
+  );
+
+  return docs.map((doc) => {
+    const merged = { ...(doc.extracted_data ?? {}), ...(doc.validated_data ?? {}) };
+    const confidence = typeof merged.confidence === "number" ? merged.confidence : null;
+    const requiredComplete = merged.required_fields_complete !== false;
+    const isResolved = !!merged._reports_resolved;
+    const hasComments = commentDocIds.has(doc.id);
+    const needsAttention = (confidence !== null && confidence < threshold) || !requiredComplete;
+    return { ...doc, merged, confidence, requiredComplete, isResolved, hasComments, needsAttention };
+  });
+}
+
 export async function getFewShotExamples(workspaceId: string): Promise<
   Array<{ extracted: Record<string, unknown>; validated: Record<string, unknown> }>
 > {

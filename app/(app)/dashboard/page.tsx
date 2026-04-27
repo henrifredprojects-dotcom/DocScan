@@ -33,6 +33,23 @@ function SendIcon() {
   );
 }
 
+function ExternalLinkIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+    </svg>
+  );
+}
+
+function SheetsIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>
+    </svg>
+  );
+}
+
 function ArrowUpIcon() {
   return (
     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -190,6 +207,10 @@ export default async function DashboardPage() {
   const avgPerDoc = thisMonthCount > 0 ? thisMonthAmount / thisMonthCount : 0;
   const maxCatAmount = topCategories[0]?.amount ?? 1;
 
+  const rawSheetsId = activeWorkspace?.sheets_id ?? null;
+  const sheetsId = rawSheetsId?.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] ?? rawSheetsId;
+  const sheetUrl = sheetsId ? `https://docs.google.com/spreadsheets/d/${sheetsId}/edit` : null;
+
   return (
     <div>
       {/* Header */}
@@ -264,6 +285,16 @@ export default async function DashboardPage() {
           <strong>{fmtAmount(exportedThisMonthAmount, currency)}</strong> exported this month
         </div>
         <div style={{ flex: 1 }} />
+        {sheetUrl && (
+          <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <SheetsIcon /> Open Google Sheet <ExternalLinkIcon />
+          </a>
+        )}
+        {!sheetUrl && (
+          <Link href="/settings/sheets" className="btn btn-ghost btn-sm" style={{ color: "var(--ink-400)", fontSize: 12 }}>
+            Configure Sheet →
+          </Link>
+        )}
         <Link href="/documents" className="btn btn-secondary btn-sm">
           All documents <ChevronRightIcon />
         </Link>

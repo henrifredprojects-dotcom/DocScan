@@ -20,6 +20,7 @@ export function GeneralSettingsForm({ workspace }: { workspace: Workspace }) {
   const [color, setColor] = useState(workspace.color ?? "#1A56DB");
   const [currency, setCurrency] = useState(workspace.currency ?? "PHP");
   const [logoUrl, setLogoUrl] = useState(workspace.logo_url ?? "");
+  const [threshold, setThreshold] = useState(Math.round((workspace.confidence_threshold ?? 0.9) * 100));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState<"ok" | "err">("ok");
@@ -33,7 +34,7 @@ export function GeneralSettingsForm({ workspace }: { workspace: Workspace }) {
     const res = await fetch(`/api/workspaces/${workspace.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), color, currency, logo_url: logoUrl.trim() || null }),
+      body: JSON.stringify({ name: name.trim(), color, currency, logo_url: logoUrl.trim() || null, confidence_threshold: threshold / 100 }),
     });
     const payload = await res.json() as { ok?: boolean; error?: string };
     setSaving(false);
@@ -118,6 +119,30 @@ export function GeneralSettingsForm({ workspace }: { workspace: Workspace }) {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="field">
+            <label>
+              AI confidence threshold
+              <span style={{ marginLeft: "auto", fontFamily: "monospace", fontWeight: 700, color: "var(--blue-600)", fontSize: 13 }}>
+                {threshold}%
+              </span>
+            </label>
+            <input
+              type="range"
+              min={50}
+              max={99}
+              value={threshold}
+              onChange={(e) => setThreshold(Number(e.target.value))}
+              style={{ width: "100%", accentColor: "var(--blue-600)" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--ink-400)", marginTop: 2 }}>
+              <span>50% — lenient</span>
+              <span>99% — strict</span>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--ink-500)", margin: "4px 0 0" }}>
+              Documents with AI confidence below this threshold appear in Reports → À vérifier.
+            </p>
           </div>
 
           <div className="field">

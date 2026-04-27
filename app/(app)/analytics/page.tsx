@@ -1,4 +1,4 @@
-import { format, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
 import { getAnalyticsData } from "@/lib/data/documents";
 import { getCurrentUser, listUserWorkspaces } from "@/lib/data/workspaces";
@@ -181,6 +181,41 @@ export default async function AnalyticsPage() {
     return sum + (typeof ext.total_amount === "number" ? ext.total_amount : 0);
   }, 0);
 
+  // M vs M-1 category comparison
+  const thisMonthStart = startOfMonth(now).toISOString();
+  const lastMonthStart = startOfMonth(subMonths(now, 1)).toISOString();
+  const lastMonthEnd = endOfMonth(subMonths(now, 1)).toISOString();
+
+  const thisMonthDocs = validatedDocs.filter((d) => (d.created_at ?? "") >= thisMonthStart);
+  const lastMonthDocs = validatedDocs.filter(
+    (d) => (d.created_at ?? "") >= lastMonthStart && (d.created_at ?? "") <= lastMonthEnd,
+  );
+
+  function buildCatMap(docs: typeof validatedDocs) {
+    const m = new Map<string, { amount: number; count: number }>();
+    for (const doc of docs) {
+      const ext = getExtracted(doc);
+      const cat = String(ext.suggested_category ?? ext.category_name ?? "Uncategorized");
+      const amt = typeof ext.total_amount === "number" ? ext.total_amount : 0;
+      const prev = m.get(cat) ?? { amount: 0, count: 0 };
+      m.set(cat, { amount: prev.amount + amt, count: prev.count + 1 });
+    }
+    return m;
+  }
+
+  const thisCatMap = buildCatMap(thisMonthDocs);
+  const lastCatMap = buildCatMap(lastMonthDocs);
+  const allCats = Array.from(new Set([...thisCatMap.keys(), ...lastCatMap.keys()])).sort();
+
+  const thisMonthTotal = thisMonthDocs.reduce((s, d) => {
+    const ext = getExtracted(d);
+    return s + (typeof ext.total_amount === "number" ? ext.total_amount : 0);
+  }, 0);
+  const lastMonthTotal = lastMonthDocs.reduce((s, d) => {
+    const ext = getExtracted(d);
+    return s + (typeof ext.total_amount === "number" ? ext.total_amount : 0);
+  }, 0);
+
   return (
     <div>
       <div className="screen-h">
@@ -297,6 +332,75 @@ export default async function AnalyticsPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* M vs M-1 comparison */}
+      <div className="card" style={{ marginBottom: 20, marginTop: 20 }}>
+        <div className="card-h">
+          <div>
+            <div className="card-title">Monthly comparison — {format(now, "MMM yyyy")} vs {format(subMonths(now, 1), "MMM yyyy")}</div>
+            <div className="card-sub">Validated documents · spending by category</div>
+          </div>
+        </div>
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th style={{ textAlign: "right" }}>{format(subMonths(now, 1), "MMM")} ({currency})</th>
+              <th style={{ textAlign: "right" }}>{format(now, "MMM")} ({currency})</th>
+              <th style={{ textAlign: "right" }}>Change</th>
+              <th style={{ textAlign: "right" }}>Docs</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allCats.length === 0 && (
+              <tr><td colSpan={5} style={{ padding: 24, textAlign: "center", color: "var(--ink-400)" }}>No data for these two months.</td></tr>
+            )}
+            {allCats.map((cat) => {
+              const last = lastCatMap.get(cat) ?? { amount: 0, count: 0 };
+              const cur = thisCatMap.get(cat) ?? { amount: 0, count: 0 };
+              const diff = cur.amount - last.amount;
+              const pct = last.amount > 0 ? Math.round((diff / last.amount) * 100) : null;
+              const up = diff > 0;
+              return (
+                <tr key={cat}>
+                  <td style={{ fontWeight: 500 }}>{cat}</td>
+                  <td className="mono" style={{ textAlign: "right", color: "var(--ink-600)" }}>
+                    {last.amount > 0 ? last.amount.toLocaleString("en", { maximumFractionDigits: 0 }) : "—"}
+                  </td>
+                  <td className="mono" style={{ textAlign: "right", fontWeight: 600 }}>
+                    {cur.amount > 0 ? cur.amount.toLocaleString("en", { maximumFractionDigits: 0 }) : "—"}
+                  </td>
+                  <td className="mono" style={{ textAlign: "right", color: diff === 0 ? "var(--ink-400)" : up ? "var(--err)" : "oklch(0.45 0.14 160)", fontWeight: 600 }}>
+                    {diff === 0 ? "—" : `${up ? "+" : ""}${diff.toLocaleString("en", { maximumFractionDigits: 0 })}${pct !== null ? ` (${up ? "+" : ""}${pct}%)` : ""}`}
+                  </td>
+                  <td className="mono" style={{ textAlign: "right", color: "var(--ink-500)", fontSize: 12 }}>
+                    {last.count > 0 || cur.count > 0 ? `${last.count} → ${cur.count}` : "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr style={{ background: "var(--ink-100)" }}>
+              <td style={{ fontWeight: 700 }}>Total</td>
+              <td className="mono" style={{ textAlign: "right", fontWeight: 600 }}>
+                {lastMonthTotal > 0 ? lastMonthTotal.toLocaleString("en", { maximumFractionDigits: 0 }) : "—"}
+              </td>
+              <td className="mono" style={{ textAlign: "right", fontWeight: 700 }}>
+                {thisMonthTotal > 0 ? thisMonthTotal.toLocaleString("en", { maximumFractionDigits: 0 }) : "—"}
+              </td>
+              <td className="mono" style={{ textAlign: "right", fontWeight: 700, color: (thisMonthTotal - lastMonthTotal) > 0 ? "var(--err)" : "oklch(0.45 0.14 160)" }}>
+                {lastMonthTotal > 0 || thisMonthTotal > 0
+                  ? `${(thisMonthTotal - lastMonthTotal) >= 0 ? "+" : ""}${(thisMonthTotal - lastMonthTotal).toLocaleString("en", { maximumFractionDigits: 0 })}`
+                  : "—"}
+              </td>
+              <td className="mono" style={{ textAlign: "right", color: "var(--ink-500)", fontSize: 12 }}>
+                {lastMonthDocs.length} → {thisMonthDocs.length}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 20 }}>

@@ -98,6 +98,7 @@ export async function updateWorkspace(
     sheetsId?: string | null;
     sheetsTab?: string | null;
     sheetsTemplate?: string | null;
+    confidenceThreshold?: number | null;
   },
 ): Promise<Workspace> {
   const supabase = await getSupabaseServerClient();
@@ -111,6 +112,7 @@ export async function updateWorkspace(
       ...(payload.sheetsId !== undefined && { sheets_id: payload.sheetsId }),
       ...(payload.sheetsTab !== undefined && { sheets_tab: payload.sheetsTab }),
       ...(payload.sheetsTemplate !== undefined && { sheets_template: payload.sheetsTemplate }),
+      ...(payload.confidenceThreshold !== undefined && { confidence_threshold: payload.confidenceThreshold }),
     })
     .eq("id", workspaceId)
     .eq("owner_id", userId)

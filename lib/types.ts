@@ -11,6 +11,17 @@ export interface Workspace {
   sheets_id: string | null;
   sheets_tab: string | null;
   sheets_template: string | null;
+  confidence_threshold: number | null;
+  created_at: string;
+}
+
+export interface DocumentComment {
+  id: string;
+  document_id: string;
+  workspace_id: string;
+  user_id: string;
+  user_email: string | null;
+  body: string;
   created_at: string;
 }
 
