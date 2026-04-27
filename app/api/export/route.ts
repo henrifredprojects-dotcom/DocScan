@@ -77,7 +77,10 @@ export async function POST(request: Request) {
 
     if (updateError) throw updateError;
 
-    return NextResponse.json({ ok: true, exported_at: nowIso });
+    const rawId = (workspace.sheets_id as string) ?? "";
+    const sheetId = rawId.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] ?? rawId;
+    const sheetUrl = sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : null;
+    return NextResponse.json({ ok: true, exported_at: nowIso, sheetUrl });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });

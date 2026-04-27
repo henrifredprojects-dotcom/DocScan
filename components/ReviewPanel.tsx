@@ -229,7 +229,7 @@ export function ReviewPanel({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ documentId: document.id }),
     });
-    const exportPayload = (await exportRes.json()) as { ok?: boolean; error?: string; warning?: string };
+    const exportPayload = (await exportRes.json()) as { ok?: boolean; error?: string; warning?: string; sheetUrl?: string };
     setSaving(null);
     if (exportPayload.ok) {
       router.refresh();
@@ -239,6 +239,7 @@ export function ReviewPanel({
       } else {
         setMsgType("ok");
         setMessage(workspaceName ? `Exported to ${workspaceName} ✓` : "Exported to workspace sheet ✓");
+        if (exportPayload.sheetUrl) window.open(exportPayload.sheetUrl, "_blank");
       }
     } else {
       setMsgType("err");

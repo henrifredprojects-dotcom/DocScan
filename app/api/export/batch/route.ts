@@ -97,7 +97,10 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ ok: true, exported, errors: errors.length > 0 ? errors : undefined });
+    const rawId = workspace.sheets_id as string;
+    const sheetId = rawId.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1] ?? rawId;
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
+    return NextResponse.json({ ok: true, exported, sheetUrl, errors: errors.length > 0 ? errors : undefined });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });

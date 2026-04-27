@@ -95,13 +95,14 @@ export function DocumentsTable({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workspaceId }),
       });
-      const payload = (await res.json()) as { ok?: boolean; exported?: number; error?: string };
+      const payload = (await res.json()) as { ok?: boolean; exported?: number; sheetUrl?: string; error?: string };
       if (payload.ok) {
         const n = payload.exported ?? 0;
         if (n === 0) {
           setExportMsg({ ok: false, text: "Nothing to export. If documents are stuck, use Re-export to reset." });
         } else {
           setExportMsg({ ok: true, text: `${n} document${n > 1 ? "s" : ""} exported ✓` });
+          if (payload.sheetUrl) window.open(payload.sheetUrl, "_blank");
         }
         router.refresh();
       } else {
@@ -131,10 +132,11 @@ export function DocumentsTable({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workspaceId }),
       });
-      const payload = (await res.json()) as { ok?: boolean; exported?: number; errors?: string[]; error?: string };
+      const payload = (await res.json()) as { ok?: boolean; exported?: number; sheetUrl?: string; errors?: string[]; error?: string };
       if (payload.ok) {
         const n = payload.exported ?? 0;
         setExportMsg({ ok: n > 0, text: n === 0 ? "No documents exported. Check Settings → Google Sheets." : `${n} document${n > 1 ? "s" : ""} exported ✓` });
+        if (n > 0 && payload.sheetUrl) window.open(payload.sheetUrl, "_blank");
         router.refresh();
       } else {
         setExportMsg({ ok: false, text: payload.error ?? "Export failed." });
