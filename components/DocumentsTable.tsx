@@ -98,7 +98,43 @@ export function DocumentsTable({
       const payload = (await res.json()) as { ok?: boolean; exported?: number; error?: string };
       if (payload.ok) {
         const n = payload.exported ?? 0;
-        setExportMsg({ ok: true, text: n === 0 ? "Nothing to export." : `${n} document${n > 1 ? "s" : ""} exported ✓` });
+        if (n === 0) {
+          setExportMsg({ ok: false, text: "Nothing to export. If documents are stuck, use Re-export to reset." });
+        } else {
+          setExportMsg({ ok: true, text: `${n} document${n > 1 ? "s" : ""} exported ✓` });
+        }
+        router.refresh();
+      } else {
+        setExportMsg({ ok: false, text: payload.error ?? "Export failed." });
+      }
+    } catch {
+      setExportMsg({ ok: false, text: "Network error." });
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function resetAndReExport() {
+    if (!workspaceId) return;
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      // Reset exported_at on all validated docs
+      await fetch("/api/export/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId }),
+      });
+      // Then batch export
+      const res = await fetch("/api/export/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId }),
+      });
+      const payload = (await res.json()) as { ok?: boolean; exported?: number; errors?: string[]; error?: string };
+      if (payload.ok) {
+        const n = payload.exported ?? 0;
+        setExportMsg({ ok: n > 0, text: n === 0 ? "No documents exported. Check Settings → Google Sheets." : `${n} document${n > 1 ? "s" : ""} exported ✓` });
         router.refresh();
       } else {
         setExportMsg({ ok: false, text: payload.error ?? "Export failed." });
@@ -159,9 +195,18 @@ export function DocumentsTable({
             className="btn btn-secondary"
             onClick={exportAll}
             disabled={exporting || !workspaceId || exportableCount === 0}
-            title={exportableCount === 0 ? "No validated documents pending export" : `Export validated documents to Sheets`}
+            title={exportableCount === 0 ? "No validated documents pending export" : "Export validated documents to Sheets"}
           >
             <DownloadIcon /> {exporting ? "Exporting…" : `Export all${exportableCount > 0 ? ` (${exportableCount})` : ""}`}
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={resetAndReExport}
+            disabled={exporting || !workspaceId}
+            title="Reset export status and re-export all validated documents"
+            style={{ color: "var(--ink-500)" }}
+          >
+            {exporting ? "…" : "Re-export all"}
           </button>
           <Link href="/documents/new" className="btn btn-primary">
             <PlusIcon /> Capture

@@ -26,7 +26,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
-    if (document.exported_at) {
+    // Allow re-export if forced (e.g. sheet was misconfigured before)
+    const force = (body as { documentId: string; force?: boolean }).force === true;
+    if (document.exported_at && !force) {
       return NextResponse.json({ error: "Document already exported." }, { status: 409 });
     }
 
@@ -47,39 +49,35 @@ export async function POST(request: Request) {
       user_email: user.email ?? "",
     };
 
-    let sheetsWarning: string | undefined;
-    if (workspace.sheets_id && workspace.sheets_tab) {
-      try {
-        await exportToWorkspaceSheet({
-          workspace: workspace as Workspace,
-          document: document as DocumentRow,
-          validatedData,
-        });
-      } catch (sheetsErr) {
-        const raw = sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr);
-        if (raw.includes("not found") || raw.includes("404") || raw.includes("no sheets_id")) {
-          sheetsWarning = `Google Sheet not accessible — check that the sheet ID and tab name are correct and that the service account has access. (${raw})`;
-        } else {
-          sheetsWarning = `Google Sheets export failed: ${raw}`;
-        }
-      }
+    if (!workspace.sheets_id || !workspace.sheets_tab) {
+      // No sheet configured — just validate, don't set exported_at
+      await supabase.from("documents").update({ status: "validated", validated_data: validatedData }).eq("id", body.documentId);
+      return NextResponse.json({ ok: true, exported_at: null, warning: "No Google Sheet configured for this workspace. Document validated but not exported. Configure a sheet in Settings → Google Sheets." });
+    }
+
+    // Try sheets export — only set exported_at if it succeeds
+    try {
+      await exportToWorkspaceSheet({
+        workspace: workspace as Workspace,
+        document: document as DocumentRow,
+        validatedData,
+      });
+    } catch (sheetsErr) {
+      const raw = sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr);
+      // Save as validated but do NOT set exported_at so it can be re-exported later
+      await supabase.from("documents").update({ status: "validated", validated_data: validatedData }).eq("id", body.documentId);
+      return NextResponse.json({ ok: true, exported_at: null, warning: `Document validated but not exported to Sheets: ${raw}` });
     }
 
     const nowIso = new Date().toISOString();
     const { error: updateError } = await supabase
       .from("documents")
-      .update({
-        status: "validated",
-        exported_at: nowIso,
-        validated_data: validatedData,
-      })
+      .update({ status: "validated", exported_at: nowIso, validated_data: validatedData })
       .eq("id", body.documentId);
 
-    if (updateError) {
-      throw updateError;
-    }
+    if (updateError) throw updateError;
 
-    return NextResponse.json({ ok: true, exported_at: nowIso, warning: sheetsWarning });
+    return NextResponse.json({ ok: true, exported_at: nowIso });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });
