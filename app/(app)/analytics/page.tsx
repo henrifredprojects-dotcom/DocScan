@@ -371,7 +371,7 @@ export default async function AnalyticsPage() {
                   <td className="mono" style={{ textAlign: "right", fontWeight: 600 }}>
                     {cur.amount > 0 ? cur.amount.toLocaleString("en", { maximumFractionDigits: 0 }) : "—"}
                   </td>
-                  <td className="mono" style={{ textAlign: "right", color: diff === 0 ? "var(--ink-400)" : up ? "var(--err)" : "oklch(0.45 0.14 160)", fontWeight: 600 }}>
+                  <td className="mono" style={{ textAlign: "right", color: diff === 0 ? "var(--ink-400)" : up ? "oklch(0.45 0.14 160)" : "var(--err)", fontWeight: 600 }}>
                     {diff === 0 ? "—" : `${up ? "+" : ""}${diff.toLocaleString("en", { maximumFractionDigits: 0 })}${pct !== null ? ` (${up ? "+" : ""}${pct}%)` : ""}`}
                   </td>
                   <td className="mono" style={{ textAlign: "right", color: "var(--ink-500)", fontSize: 12 }}>
@@ -390,7 +390,7 @@ export default async function AnalyticsPage() {
               <td className="mono" style={{ textAlign: "right", fontWeight: 700 }}>
                 {thisMonthTotal > 0 ? thisMonthTotal.toLocaleString("en", { maximumFractionDigits: 0 }) : "—"}
               </td>
-              <td className="mono" style={{ textAlign: "right", fontWeight: 700, color: (thisMonthTotal - lastMonthTotal) > 0 ? "var(--err)" : "oklch(0.45 0.14 160)" }}>
+              <td className="mono" style={{ textAlign: "right", fontWeight: 700, color: (thisMonthTotal - lastMonthTotal) > 0 ? "oklch(0.45 0.14 160)" : (thisMonthTotal - lastMonthTotal) < 0 ? "var(--err)" : "var(--ink-400)" }}>
                 {lastMonthTotal > 0 || thisMonthTotal > 0
                   ? `${(thisMonthTotal - lastMonthTotal) >= 0 ? "+" : ""}${(thisMonthTotal - lastMonthTotal).toLocaleString("en", { maximumFractionDigits: 0 })}`
                   : "—"}
