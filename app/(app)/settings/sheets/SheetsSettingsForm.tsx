@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { SHEET_TEMPLATES, DEFAULT_TEMPLATE_ID } from "@/lib/sheets-templates";
 import type { Workspace } from "@/lib/types";
@@ -31,6 +31,16 @@ export function SheetsSettingsForm({ workspaces }: { workspaces: Workspace[] }) 
   const [rows, setRows] = useState<Record<string, RowState>>(
     () => Object.fromEntries(workspaces.map((w) => [w.id, initRow(w)])),
   );
+  const [serviceAccountEmail, setServiceAccountEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d: { serviceAccountEmail?: string }) => {
+        if (d.serviceAccountEmail) setServiceAccountEmail(d.serviceAccountEmail);
+      })
+      .catch(() => null);
+  }, []);
 
   function update(id: string, patch: Partial<RowState>) {
     setRows((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
@@ -201,6 +211,22 @@ export function SheetsSettingsForm({ workspaces }: { workspaces: Workspace[] }) 
               </div>
             </div>
 
+            {/* Service account hint */}
+            {serviceAccountEmail && (
+              <div style={{
+                padding: "8px 12px",
+                background: "var(--blue-100)",
+                borderRadius: "var(--radius)",
+                marginBottom: 12,
+                fontSize: 12,
+                color: "var(--blue-ink)",
+                lineHeight: 1.5,
+              }}>
+                <strong>Option A — Create automatically:</strong> Click "Create new Sheet" below — a Google Sheet is created for you and shared with your account.<br />
+                <strong>Option B — Use your own sheet:</strong> Share your existing Google Sheet with <code style={{ background: "rgba(0,0,0,.07)", padding: "1px 5px", borderRadius: 4 }}>{serviceAccountEmail}</code> (as Editor), then paste its ID above.
+              </div>
+            )}
+
             {/* Actions */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <button
@@ -210,23 +236,21 @@ export function SheetsSettingsForm({ workspaces }: { workspaces: Workspace[] }) 
               >
                 {row.saving ? "Saving…" : "Save"}
               </button>
-              {!row.sheetsId && (
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => createSheet(workspace)}
-                  disabled={row.creating || row.saving}
-                  style={{ display: "flex", alignItems: "center", gap: 6 }}
-                >
-                  {row.creating ? "Creating…" : (
-                    <>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                      </svg>
-                      Create new Sheet
-                    </>
-                  )}
-                </button>
-              )}
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => createSheet(workspace)}
+                disabled={row.creating || row.saving}
+                style={{ display: "flex", alignItems: "center", gap: 6 }}
+              >
+                {row.creating ? "Creating…" : (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    {row.sheetsId ? "Replace Sheet" : "Create new Sheet"}
+                  </>
+                )}
+              </button>
               {row.saved && (
                 <span style={{ fontSize: 12.5, color: "oklch(0.4 0.14 160)", fontWeight: 500 }}>
                   {row.sheetsId ? "Sheet created ✓ — shared with your Google account" : "Saved ✓"}

@@ -47,11 +47,23 @@ export async function POST(request: Request) {
       user_email: user.email ?? "",
     };
 
-    await exportToWorkspaceSheet({
-      workspace: workspace as Workspace,
-      document: document as DocumentRow,
-      validatedData,
-    });
+    let sheetsWarning: string | undefined;
+    if (workspace.sheets_id && workspace.sheets_tab) {
+      try {
+        await exportToWorkspaceSheet({
+          workspace: workspace as Workspace,
+          document: document as DocumentRow,
+          validatedData,
+        });
+      } catch (sheetsErr) {
+        const raw = sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr);
+        if (raw.includes("not found") || raw.includes("404") || raw.includes("no sheets_id")) {
+          sheetsWarning = `Google Sheet not accessible — check that the sheet ID and tab name are correct and that the service account has access. (${raw})`;
+        } else {
+          sheetsWarning = `Google Sheets export failed: ${raw}`;
+        }
+      }
+    }
 
     const nowIso = new Date().toISOString();
     const { error: updateError } = await supabase
@@ -67,7 +79,7 @@ export async function POST(request: Request) {
       throw updateError;
     }
 
-    return NextResponse.json({ ok: true, exported_at: nowIso });
+    return NextResponse.json({ ok: true, exported_at: nowIso, warning: sheetsWarning });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });

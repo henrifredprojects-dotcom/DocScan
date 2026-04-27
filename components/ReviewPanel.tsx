@@ -229,12 +229,17 @@ export function ReviewPanel({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ documentId: document.id }),
     });
-    const exportPayload = (await exportRes.json()) as { ok?: boolean; error?: string };
+    const exportPayload = (await exportRes.json()) as { ok?: boolean; error?: string; warning?: string };
     setSaving(null);
     if (exportPayload.ok) {
-      setMsgType("ok");
-      setMessage(workspaceName ? `Exported to ${workspaceName} ✓` : "Exported to workspace sheet.");
       router.refresh();
+      if (exportPayload.warning) {
+        setMsgType("err");
+        setMessage(`Validated ✓ — Sheet export skipped: ${exportPayload.warning}`);
+      } else {
+        setMsgType("ok");
+        setMessage(workspaceName ? `Exported to ${workspaceName} ✓` : "Exported to workspace sheet ✓");
+      }
     } else {
       setMsgType("err");
       setMessage(exportPayload.error ?? "Export failed");
