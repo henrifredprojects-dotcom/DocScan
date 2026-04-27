@@ -1,10 +1,11 @@
 "use server";
 
 import { createServerClient } from "@supabase/ssr";
-import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { requirePublicEnv } from "@/lib/env";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/workspace";
 
 const DEFAULT_CATEGORIES = [
@@ -14,13 +15,14 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export async function createWorkspaceAction(
-  _prevState: { error: string | null },
+  _prevState: { error: string | null; redirect?: string },
   formData: FormData,
 ): Promise<{ error: string | null; redirect?: string }> {
+  // Verify the user is authenticated using the anon client + cookies
   const env = requirePublicEnv();
   const cookieStore = await cookies();
 
-  const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
+  const anonClient = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {
       getAll: () => cookieStore.getAll(),
       setAll: (toSet) => toSet.forEach(({ name, value, options }) =>
@@ -29,13 +31,17 @@ export async function createWorkspaceAction(
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await anonClient.auth.getUser();
   if (!user) redirect("/login");
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Workspace name is required." };
 
-  const { data: workspace, error: wsError } = await supabase
+  // Use admin client (service role) for DB writes — bypasses RLS
+  // Safe because we already verified the user above
+  const admin = getSupabaseAdminClient();
+
+  const { data: workspace, error: wsError } = await admin
     .from("workspaces")
     .insert({
       owner_id: user.id,
@@ -51,10 +57,10 @@ export async function createWorkspaceAction(
   if (wsError) return { error: wsError.message };
 
   await Promise.allSettled(
-    DEFAULT_CATEGORIES.map((catName) =>
-      supabase.from("categories").insert({
+    DEFAULT_CATEGORIES.map((cat) =>
+      admin.from("categories").insert({
         workspace_id: workspace.id,
-        name: catName,
+        name: cat,
         is_default: true,
         account_code: null,
       })
