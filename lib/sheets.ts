@@ -49,10 +49,10 @@ export async function createAndShareSheet(
   workspaceName: string,
   userEmail: string,
   templateId: string | null,
-): Promise<{ sheetId: string; tabName: string }> {
-  const auth = getDriveAuthClient();
-  const sheets = google.sheets({ version: "v4", auth });
-  const drive = google.drive({ version: "v3", auth });
+): Promise<{ sheetId: string; tabName: string; sharedOk: boolean }> {
+  // Use Sheets-only auth for creation (Drive auth for sharing attempt)
+  const sheetsAuth = getAuthClient();
+  const sheets = google.sheets({ version: "v4", auth: sheetsAuth });
 
   const tabName = "Expenses";
   const template = getTemplate(templateId);
@@ -76,7 +76,7 @@ export async function createAndShareSheet(
     requestBody: { values: [template.columns.map((c) => c.header)] },
   });
 
-  // Apply formatting (same as export flow)
+  // Apply formatting
   await applySheetFormatting(
     sheets,
     spreadsheetId,
@@ -86,14 +86,25 @@ export async function createAndShareSheet(
     template.columns.map((c, i) => (c.numeric ? i : -1)).filter((i) => i >= 0),
   );
 
-  // Share with the user so they can find it in their Drive
-  await drive.permissions.create({
-    fileId: spreadsheetId,
-    requestBody: { role: "writer", type: "user", emailAddress: userEmail },
-    sendNotificationEmail: false,
-  });
+  // Try to share with the user — requires Drive API to be enabled.
+  // If it fails (Drive API not enabled), continue anyway: export still works,
+  // the user can access the sheet via the link saved in workspace settings.
+  let sharedOk = false;
+  try {
+    const driveAuth = getDriveAuthClient();
+    const drive = google.drive({ version: "v3", auth: driveAuth });
+    await drive.permissions.create({
+      fileId: spreadsheetId,
+      requestBody: { role: "writer", type: "user", emailAddress: userEmail },
+      sendNotificationEmail: false,
+    });
+    sharedOk = true;
+  } catch {
+    // Drive API not enabled or no permission — sheet is created, user can open via direct link
+    sharedOk = false;
+  }
 
-  return { sheetId: spreadsheetId, tabName };
+  return { sheetId: spreadsheetId, tabName, sharedOk };
 }
 
 async function applySheetFormatting(

@@ -68,22 +68,32 @@ export function SheetsSettingsForm({ workspaces }: { workspaces: Workspace[] }) 
   }
 
   async function createSheet(workspace: Workspace) {
-    update(workspace.id, { creating: true, error: null });
+    update(workspace.id, { creating: true, error: null, testResult: null });
     const response = await fetch(`/api/workspaces/${workspace.id}/create-sheet`, { method: "POST" });
     if (!response.ok) {
       const payload = (await response.json()) as { error?: string };
       update(workspace.id, { creating: false, error: payload.error ?? "Sheet creation failed." });
       return;
     }
-    const payload = (await response.json()) as { workspace?: { sheets_id?: string; sheets_tab?: string } };
+    const payload = (await response.json()) as {
+      workspace?: { sheets_id?: string; sheets_tab?: string };
+      sheetUrl?: string;
+      sharedOk?: boolean;
+    };
+    const sheetId = payload.workspace?.sheets_id ?? "";
+    const sheetUrl = payload.sheetUrl ?? (sheetId ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit` : "");
     update(workspace.id, {
       creating: false,
       saved: true,
       error: null,
-      sheetsId: payload.workspace?.sheets_id ?? "",
+      sheetsId: sheetId,
       sheetsTab: payload.workspace?.sheets_tab ?? "",
+      testResult: payload.sharedOk === false && sheetUrl ? {
+        ok: true,
+        message: `Sheet created ✓ — open it here: ${sheetUrl} (automatic sharing failed — open the link and it will appear in your Drive)`,
+      } : null,
     });
-    setTimeout(() => update(workspace.id, { saved: false }), 4000);
+    setTimeout(() => update(workspace.id, { saved: false }), 5000);
   }
 
   async function save(workspace: Workspace) {

@@ -25,7 +25,7 @@ export async function POST(
 
     if (!workspace) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-    const { sheetId, tabName } = await createAndShareSheet(
+    const { sheetId, tabName, sharedOk } = await createAndShareSheet(
       workspace.name as string,
       user.email,
       workspace.sheets_template as string | null,
@@ -36,7 +36,8 @@ export async function POST(
       sheetsTab: tabName,
     });
 
-    return NextResponse.json({ ok: true, workspace: updated });
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
+    return NextResponse.json({ ok: true, workspace: updated, sheetUrl, sharedOk });
   } catch (error) {
     // Log full error for debugging
     console.error("[create-sheet] error:", error);
