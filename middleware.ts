@@ -22,16 +22,21 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  // Refresh session — must call getUser() not getSession()
   const { data: { user } } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
 
-  // Redirect unauthenticated users trying to access protected routes
-  if (!user && pathname.startsWith("/dashboard")) {
+  const isProtected =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/workspaces") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/documents");
+
+  if (!user && isProtected) {
     return NextResponse.redirect(new URL(`/login?next=${pathname}`, request.url));
   }
 
-  // Redirect authenticated users away from login
   if (user && pathname === "/login") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
@@ -40,5 +45,11 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login"],
+  matcher: [
+    "/dashboard/:path*",
+    "/workspaces/:path*",
+    "/settings/:path*",
+    "/documents/:path*",
+    "/login",
+  ],
 };

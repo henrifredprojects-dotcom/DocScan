@@ -13,26 +13,22 @@ const DEFAULT_CATEGORIES = [
   "Bank fees", "Other",
 ];
 
-function createClient() {
-  const env = requirePublicEnv();
-  // Create a fresh (non-cached) client so the session cookies are always current
-  return cookies().then((cookieStore) =>
-    createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (toSet) => toSet.forEach(({ name, value, options }) =>
-          cookieStore.set(name, value, options)
-        ),
-      },
-    })
-  );
-}
-
 export async function createWorkspaceAction(
   _prevState: { error: string | null },
   formData: FormData,
-): Promise<{ error: string | null }> {
-  const supabase = await createClient();
+): Promise<{ error: string | null; redirect?: string }> {
+  const env = requirePublicEnv();
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
+    cookies: {
+      getAll: () => cookieStore.getAll(),
+      setAll: (toSet) => toSet.forEach(({ name, value, options }) =>
+        cookieStore.set(name, value, options)
+      ),
+    },
+  });
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
@@ -54,8 +50,7 @@ export async function createWorkspaceAction(
 
   if (wsError) return { error: wsError.message };
 
-  // Insert default categories
-  const catResults = await Promise.allSettled(
+  await Promise.allSettled(
     DEFAULT_CATEGORIES.map((catName) =>
       supabase.from("categories").insert({
         workspace_id: workspace.id,
@@ -66,12 +61,6 @@ export async function createWorkspaceAction(
     ),
   );
 
-  const catError = catResults.find((r) => r.status === "rejected");
-  if (catError && catError.status === "rejected") {
-    console.error("Category insert error:", catError.reason);
-  }
-
-  const cookieStore = await cookies();
   cookieStore.set(ACTIVE_WORKSPACE_COOKIE, workspace.id, {
     path: "/",
     sameSite: "lax",
@@ -79,5 +68,5 @@ export async function createWorkspaceAction(
     maxAge: 60 * 60 * 24 * 30,
   });
 
-  redirect("/dashboard");
+  return { error: null, redirect: "/dashboard" };
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createWorkspaceAction } from "./actions";
 
 const DEFAULT_CATEGORIES = [
@@ -10,7 +11,12 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export default function NewWorkspacePage() {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(createWorkspaceAction, { error: null });
+
+  useEffect(() => {
+    if (state.redirect) router.push(state.redirect);
+  }, [state.redirect, router]);
 
   return (
     <div>
