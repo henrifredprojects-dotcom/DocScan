@@ -170,7 +170,13 @@ export async function POST(request: Request) {
 
       const { data: { publicUrl } } = admin.storage.from("documents").getPublicUrl(objectPath);
 
-      const extracted = await extractDocumentData(publicUrl, examples, contentType);
+      // Use a signed URL for OCR to avoid 400s on public URL fetches
+      const { data: signedData } = await admin.storage
+        .from("documents")
+        .createSignedUrl(objectPath, 120);
+      const ocrUrl = signedData?.signedUrl ?? publicUrl;
+
+      const extracted = await extractDocumentData(ocrUrl, examples, contentType);
 
       type VRRow = { vendor_match: string; categories: { name: string } | null };
       const { data: vendorRules } = await admin
