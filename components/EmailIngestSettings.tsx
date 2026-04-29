@@ -2,6 +2,131 @@
 
 import { useState } from "react";
 
+function GmailSection({
+  workspaces,
+  isGmailConfigured,
+}: {
+  workspaces: { id: string; name: string; color?: string | null }[];
+  isGmailConfigured: boolean;
+}) {
+  const [selectedWs, setSelectedWs] = useState(workspaces[0]?.id ?? "");
+  const [syncing, setSyncing] = useState(false);
+  const [result, setResult] = useState<{ text: string; ok: boolean } | null>(null);
+
+  async function sync() {
+    if (!selectedWs) return;
+    setSyncing(true);
+    setResult(null);
+    let total = 0;
+    try {
+      // Loop one message per call to stay within Vercel 10s function limit
+      while (true) {
+        const res = await fetch("/api/ingest/gmail", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspace_id: selectedWs, label: `DocScan/${workspaces.find((w) => w.id === selectedWs)?.name ?? selectedWs}` }),
+        });
+        const data = await res.json() as { ok?: boolean; done?: boolean; processed?: number; error?: string };
+        if (!data.ok) {
+          setResult({ ok: false, text: data.error ?? "Sync failed." });
+          return;
+        }
+        total += data.processed ?? 0;
+        if (data.done) break;
+      }
+      setResult({
+        ok: true,
+        text: total === 0
+          ? "No new documents found in Gmail label «DocScan»."
+          : `${total} document${total > 1 ? "s" : ""} imported ✓`,
+      });
+    } catch {
+      setResult({ ok: false, text: "Network error." });
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="card-h">
+        <div>
+          <div className="card-title">Gmail sync</div>
+          <div className="card-sub">
+            Label your emails <strong>DocScan</strong> in Gmail, then click Sync to import attachments automatically — 100% free, no intermediary.
+          </div>
+        </div>
+        {isGmailConfigured
+          ? <span className="chip validated">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Connected
+            </span>
+          : <span className="chip pending">Not connected</span>}
+      </div>
+
+      {!isGmailConfigured ? (
+        <div className="card-b" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--ink-600)", lineHeight: 1.6 }}>
+            Connect your Gmail account to enable one-click sync. You need a <strong>Google Cloud OAuth 2.0 Client ID</strong> (free).
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[
+              { n: 1, text: "Go to Google Cloud Console → APIs & Services → Credentials → Create OAuth 2.0 Client ID (Web application)." },
+              { n: 2, text: `Add ${typeof window !== "undefined" ? window.location.origin : ""}/api/auth/gmail/callback as an Authorized redirect URI.` },
+              { n: 3, text: "Copy Client ID and Client Secret → add to .env.local as GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET → restart server." },
+              { n: 4, text: "Click \"Connect Gmail\" below to authorize and get your refresh token." },
+            ].map((step) => (
+              <div key={step.n} style={{ display: "flex", gap: 12 }}>
+                <div style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, background: "var(--blue-600)", color: "#fff", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>
+                  {step.n}
+                </div>
+                <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--ink-700)", lineHeight: 1.55 }}>{step.text}</p>
+              </div>
+            ))}
+          </div>
+          <div>
+            <a href="/api/auth/gmail" className="btn btn-primary btn-sm" style={{ textDecoration: "none" }}>
+              Connect Gmail
+            </a>
+          </div>
+        </div>
+      ) : (
+        <div className="card-b" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--ink-600)", lineHeight: 1.6 }}>
+            Dans Gmail, crée un sous-label <strong>DocScan/{workspaces.find((w) => w.id === selectedWs)?.name ?? "…"}</strong> et glisse-y les mails avec factures. Le Sync importe les pièces jointes et marque les mails comme lus.
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            {workspaces.length > 1 && (
+              <select
+                className="ds-select"
+                style={{ width: "auto", fontSize: 13 }}
+                value={selectedWs}
+                onChange={(e) => setSelectedWs(e.target.value)}
+              >
+                {workspaces.map((ws) => (
+                  <option key={ws.id} value={ws.id}>{ws.name}</option>
+                ))}
+              </select>
+            )}
+            <button
+              className="btn btn-primary"
+              onClick={sync}
+              disabled={syncing || !selectedWs}
+            >
+              {syncing ? "Syncing…" : "Sync Gmail now"}
+            </button>
+            {result && (
+              <span style={{ fontSize: 13, fontWeight: 500, color: result.ok ? "oklch(0.4 0.14 160)" : "var(--err)" }}>
+                {result.text}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CopyIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -44,9 +169,11 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 export function EmailIngestSettings({
   webhookUrl,
   workspaces,
+  isGmailConfigured = false,
 }: {
   webhookUrl: string;
   workspaces: { id: string; name: string; color?: string | null }[];
+  isGmailConfigured?: boolean;
 }) {
   const [selectedWs, setSelectedWs] = useState(workspaces[0]?.id ?? "");
 
@@ -65,6 +192,9 @@ export function EmailIngestSettings({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Gmail sync — primary free method */}
+      <GmailSection workspaces={workspaces} isGmailConfigured={isGmailConfigured} />
+
       {/* Webhook URL */}
       <div className="card">
         <div className="card-h">

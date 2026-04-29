@@ -11,6 +11,11 @@ export default async function EmailSettingsPage() {
   const webhookUrl = `${appUrl}/api/ingest/email`;
 
   const isConfigured = Boolean(process.env.INGEST_WEBHOOK_SECRET);
+  const isGmailConfigured = Boolean(
+    process.env.GMAIL_CLIENT_ID &&
+    process.env.GMAIL_CLIENT_SECRET &&
+    process.env.GMAIL_REFRESH_TOKEN,
+  );
 
   return (
     <div>
@@ -58,6 +63,7 @@ export default async function EmailSettingsPage() {
       <EmailIngestSettings
         webhookUrl={webhookUrl}
         workspaces={workspaces.map((ws) => ({ id: ws.id, name: ws.name, color: ws.color }))}
+        isGmailConfigured={isGmailConfigured}
       />
     </div>
   );
