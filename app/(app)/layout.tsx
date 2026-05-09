@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { WorkspaceSidebar } from "@/components/WorkspaceSidebar";
+import { isInvited } from "@/lib/auth/invite";
 import { getCurrentUser, listUserWorkspaces } from "@/lib/data/workspaces";
 import {
   getActiveWorkspaceIdFromCookie,
@@ -15,6 +16,10 @@ export default async function AppLayout({
   const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
+  }
+
+  if (!(await isInvited(user.email))) {
+    redirect("/auth/no-access");
   }
 
   const workspaces = await listUserWorkspaces(user);

@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 
 import { useWorkspace } from "@/hooks/useWorkspace";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Workspace } from "@/lib/types";
 
 function ScanIcon() {
@@ -155,6 +154,7 @@ function ChevronIcon({ size = 12 }: { size?: number }) {
   );
 }
 
+
 export function WorkspaceSidebar({
   workspaces,
   initialActiveWorkspaceId,
@@ -175,8 +175,7 @@ export function WorkspaceSidebar({
   const initials = userEmail ? userEmail.slice(0, 2).toUpperCase() : "?";
 
   async function handleSignOut() {
-    const supabase = getSupabaseBrowserClient();
-    await supabase.auth.signOut();
+    await fetch("/auth/signout", { method: "POST", redirect: "manual" });
     router.push("/login");
     router.refresh();
   }
@@ -190,8 +189,7 @@ export function WorkspaceSidebar({
     { href: "/dashboard",     label: "Dashboard",  icon: <HomeIcon />,      match: (p: string) => p === "/dashboard" },
     { href: "/documents",     label: "Documents",  icon: <DocsIcon />,      match: (p: string) => p.startsWith("/documents") && p !== "/documents/new" },
     { href: "/documents/new", label: "Capture",    icon: <UploadIcon />,    match: (p: string) => p === "/documents/new" },
-    { href: "/analytics",     label: "Analytics",  icon: <BarChartIcon />,  match: (p: string) => p === "/analytics" },
-    { href: "/reports",       label: "Reports",    icon: <FileTextIcon />,  match: (p: string) => p === "/reports" },
+    { href: "/reports",       label: "Data",       icon: <FileTextIcon />,  match: (p: string) => p === "/reports" },
   ];
 
   const settingsNav = [
@@ -382,6 +380,29 @@ export function WorkspaceSidebar({
             </Link>
           );
         })}
+
+        {/* Analytics */}
+        {(() => {
+          const isAnalyticsSection = pathname === "/analytics";
+          return (
+            <Link
+              href="/analytics"
+              style={{
+                display: "flex", alignItems: "center", gap: 11, padding: "8px 10px",
+                borderRadius: 9, fontSize: 13.5, fontWeight: 500, cursor: "pointer",
+                textDecoration: "none", marginBottom: 2,
+                color: isAnalyticsSection ? "#fff" : "var(--ink-800)",
+                background: isAnalyticsSection ? "var(--blue-600)" : "transparent",
+                boxShadow: isAnalyticsSection ? "0 4px 10px -4px oklch(0.52 0.21 258 / .45)" : "none",
+                transition: "background .15s ease, color .15s ease",
+              }}
+              className={clsx(!isAnalyticsSection && "hover:bg-[var(--ink-100)] hover:text-[var(--ink-900)]")}
+            >
+              <span style={{ color: isAnalyticsSection ? "#fff" : "var(--ink-500)", flexShrink: 0 }}><BarChartIcon /></span>
+              <span>Analytics</span>
+            </Link>
+          );
+        })()}
 
         <div style={{ padding: "14px 10px 6px", fontSize: 10.5, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--ink-500)", fontWeight: 600, marginTop: 6 }}>
           Settings
