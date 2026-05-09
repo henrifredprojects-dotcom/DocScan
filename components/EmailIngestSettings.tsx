@@ -93,7 +93,7 @@ function GmailSection({
       ) : (
         <div className="card-b" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <p style={{ margin: 0, fontSize: 13, color: "var(--ink-600)", lineHeight: 1.6 }}>
-            Dans Gmail, crée un sous-label <strong>DocScan/{workspaces.find((w) => w.id === selectedWs)?.name ?? "…"}</strong> et glisse-y les mails avec factures. Le Sync importe les pièces jointes et marque les mails comme lus.
+            In Gmail, create a sub-label <strong>DocScan/{workspaces.find((w) => w.id === selectedWs)?.name ?? "…"}</strong> and move invoice emails into it. Sync imports all attachments and marks the emails as read.
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             {workspaces.length > 1 && (
